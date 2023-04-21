@@ -1,57 +1,89 @@
-#include <Arduino.h>
-#include <WiFi.h>
-#include <WiFiClient.h>
 
-// Définition des informations WiFi
+#include "RTClib.h"
+#include "heartRate.h"
+#include "reset.h"
+#include "connectToJava.h"
+
+/*// Définition des informations WiFi
 const char* ssid = "UNIFI_IDO1";
-const char* password = "42Bidules!";
-
-// Adresse IP et port du serveur
-const char* server_address = "192.168.1.159";
-int server_port = 8000;
+const char* password = "42Bidules!";*/
 
 
+int buttonPin = 2;               // Connect button to input pin 2
+int pushNumber ;
+unsigned long firstTime;
+unsigned long secondTime;
 
-//objet client
-WiFiClient client;
+// Instantation de l'objet rtc
+RTC_DS3231 rtc ;
 
 void setup() {
   // Initialisation de la communication série
   Serial.begin(9600);
 
- // Connexion au réseau WiFi
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Connecting to WiFi...");
-  }
+  pinMode(buttonPin, INPUT);     // declare pushbutton as input
 
-  Serial.println("Connected to WiFi");
+  // Init du RTC
+   if (!rtc.begin())
+    {
+        Serial.println("Couldn't find RTC");
+        Serial.flush();
+        while (1)
+            delay(10);
+    }
+
+    if (rtc.lostPower())
+    {
+        Serial.println("RTC lost power, let's set the time!");
+        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    }
+
+
+  //demarer l'ecran lcd
+  lcd.init();
+
+  // Configurer le WiFi et le serveur
+  setupWifiAndServer();
 
 
 }
 
 void loop() {
+  // Gérer les demandes des clients
+    server.handleClient();
+ 
+ // reconfigurer l'objet
+  reset(buttonPin,pushNumber,firstTime,secondTime);
    
-  // Connect to server
-  client.connect(server_address, server_port);
-  
-  // Send data to server
-  String data = "Pulse:214,Name:jeans";
-  if (client.connected()) {
-     // Envoi des données au serveur si la connexion est active
-    client.println(data);
-    Serial.println(data);
-    Serial.println("Data sent to server");
-  } else {
-    Serial.println("Lost connection to server");
-    // Try to reconnect
-    if (!client.connect(server_address, server_port)) {
-      Serial.println("Could not reconnect to server");
-      return;
-    }
-  }
+   //capture du temps
+   DateTime time = rtc.now();
 
+   // conversion du temps en timestamp
+   String date = String(time.timestamp(DateTime::TIMESTAMP_TIME));
+
+   // construction de la chaine data
+   //data = "Pulse:"+getHeartRate()+",Name:"+userName+",Date:"+date;
+   data = "Pulse:215,Name:"+userName+",Date:"+date;
+
+   if (WiFi.status() == WL_CONNECTED)
+   {
+      sendToJavaServer(data);
+   }
+   
+   
+
+   //message on lcd
+   if( (WiFi.status() != WL_CONNECTED) && (!reset)){
+ 
+      afficheLostConnection();
+   }
+   
+   if ((!client.connect(server_address, server_port)) && (!reset)){
+
+       afficheLostServerConnection();
+   }
+
+ 
   delay(2000);
 }
 
