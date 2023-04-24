@@ -81,7 +81,7 @@ void loop() {
 
    // construction de la chaine data
    //data = "Pulse:"+getHeartRate()+",Name:"+userName+",Date:"+date;
-   data = "Pulse:215,Name:"+userName+",Date:"+date;
+   data = "Pulse:"+getHeartRate()+",Name:"+userName+",Date:"+date;
 
    if (WiFi.status() == WL_CONNECTED)
    {
