@@ -1,7 +1,6 @@
 
 #include "RTClib.h"
 #include "heartRate.h"
-#include "reset.h"
 #include "connectToJava.h"
 
 /*// Définition des informations WiFi
@@ -51,9 +50,28 @@ void setup() {
 void loop() {
   // Gérer les demandes des clients
     server.handleClient();
+    bool resetMode;
  
  // reconfigurer l'objet
-  reset(buttonPin,pushNumber,firstTime,secondTime);
+    if (digitalRead(buttonPin)== HIGH && pushNumber == 0)
+    {
+        pushNumber += 1;
+       firstTime = millis();
+    }
+ 
+    
+
+    if ( digitalRead(buttonPin) == HIGH && pushNumber == 1 )
+    {
+       if ((millis()-firstTime) <= 10000 ){
+             setupWifiAndServer();
+             afficheReset();
+             resetMode = true;
+            pushNumber = 0;
+          }
+          
+    }
+    
    
    //capture du temps
    DateTime time = rtc.now();
@@ -73,12 +91,12 @@ void loop() {
    
 
    //message on lcd
-   if( (WiFi.status() != WL_CONNECTED) && (!reset)){
+   if( (WiFi.status() != WL_CONNECTED) && resetMode == false){
  
       afficheLostConnection();
    }
    
-   if ((!client.connect(server_address, server_port)) && (!reset)){
+   if ((!client.connect(server_address, server_port)) && resetMode == false){
 
        afficheLostServerConnection();
    }
